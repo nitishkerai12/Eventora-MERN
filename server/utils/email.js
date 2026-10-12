@@ -3,13 +3,30 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
+const emailConfigured = Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASS);
+const smtpPort = Number(process.env.SMTP_PORT || 465);
+const transporter = emailConfigured
+    ? nodemailer.createTransport({
+        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+        port: smtpPort,
+        secure: process.env.SMTP_SECURE
+            ? process.env.SMTP_SECURE.toLowerCase() === 'true'
+            : smtpPort === 465,
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+        }
+    })
+    : null;
+
+const getTransporter = () => {
+    if (!transporter) {
+        throw new Error('Email is not configured. Set EMAIL_USER and EMAIL_PASS in server/.env.');
     }
-});
+    return transporter;
+};
+
+const verifyEmailConnection = async () => getTransporter().verify();
 
 const sendBookingEmail = async (userEmail, userName, eventTitle) => {
     try {
@@ -23,7 +40,7 @@ const sendBookingEmail = async (userEmail, userName, eventTitle) => {
         <p>Thank you for choosing Eventora.</p>
       `
         };
-        await transporter.sendMail(mailOptions);
+        await getTransporter().sendMail(mailOptions);
         console.log('Email sent successfully to', userEmail);
     } catch (error) {
         console.error('Error sending email:', error);
@@ -52,11 +69,12 @@ const sendOTPEmail = async (userEmail, otp, type) => {
                 </div>
             `
         };
-        await transporter.sendMail(mailOptions);
+        await getTransporter().sendMail(mailOptions);
         console.log(`OTP sent to ${userEmail} for ${type}`);
     } catch (error) {
         console.error('Error sending OTP email:', error);
+        throw error;
     }
 };
 
-module.exports = { sendBookingEmail, sendOTPEmail };
+module.exports = { sendBookingEmail, sendOTPEmail, verifyEmailConnection };

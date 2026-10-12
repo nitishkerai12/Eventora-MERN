@@ -32,11 +32,25 @@ Navigate to `server/.env` and fill in the necessary keys:
 ```env
 MONGO_URI=your_mongodb_connection_string
 JWT_SECRET=supersecretjwtkey_eventora
-EMAIL_USER=your_gmail_address
-EMAIL_PASS=your_gmail_app_password
 PORT=5000
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=465
+SMTP_SECURE=true
+EMAIL_USER=your_gmail_address@gmail.com
+EMAIL_PASS=your_16_character_gmail_app_password
 ```
-> **Note**: For `EMAIL_PASS`, you need to generate an "App Password" from your Google Account settings, standard passwords won't work due to 2FA.
+For `EMAIL_PASS`, use a Google **App Password**, not your normal Google password. First enable 2-Step Verification on the Google account, then create an App Password from [Google Account security settings](https://myaccount.google.com/apppasswords). Paste the generated 16-character value into `server/.env` (spaces may be omitted). Do not commit or share this password; `.env` is git-ignored.
+
+The backend sends mail through Gmail's SMTP server using TLS on port 465. After adding your credentials, restart the backend. You can test the SMTP login from the `server` directory with:
+```bash
+node -e "require('./utils/email').verifyEmailConnection().then(() => console.log('Gmail SMTP connection verified')).catch(error => { console.error('Gmail SMTP connection failed:', error.message); process.exitCode = 1; })"
+```
+
+### Deploying to Render
+
+This repository includes a `render.yaml` Blueprint for a single Render Web Service that builds the React client and serves it from the Express backend. Push the repository to GitHub, then create a Render Blueprint from that repository. Add the required `MONGO_URI`, `EMAIL_USER`, and `EMAIL_PASS` values in Render's environment settings; Render generates `JWT_SECRET`. Use a reachable MongoDB Atlas URI and allow Render to connect in the Atlas network-access settings.
+
+The deployed frontend uses the same origin as the API. For local development, Vite proxies `/api` requests to `http://localhost:5000`. Render runs the SMTP connection check at startup; verify the logs before testing OTP email delivery. If the Render service cannot reach Gmail SMTP, use an email provider or relay supported by the service's outbound network policy.
 
 ### 2. Run from Outer Folder (Single Terminal)
 You can now manage both backend and frontend from the project root:
